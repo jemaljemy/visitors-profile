@@ -1,3 +1,5 @@
+//****** */
+// ndhddjjdjd
 // --- Global State Variables ---
 let db = null;
 let visitorsList = [];
@@ -5,7 +7,11 @@ let selectedVisitorId = null;
 
 // --- Data Persistence Functions using sql.js ---
 
-// Helper function to convert query results to an array of objects
+/**
+ * Converts a SQLite query result object into a clean array of JavaScript objects.
+ * @param {Object[]} res - The result array from db.exec().
+ * @returns {Object[]} An array of objects, where each object represents a row.
+ */
 const sqlQueryToObjects = (res) => {
     if (!res || res.length === 0) return [];
     const columns = res[0].columns;
@@ -19,26 +25,42 @@ const sqlQueryToObjects = (res) => {
     });
 };
 
+/**
+ * Loads all visitor data from the SQLite database into the global visitorsList array.
+ */
 const loadVisitorsFromDb = async () => {
     const res = db.exec("SELECT * FROM visitors");
     visitorsList = sqlQueryToObjects(res);
     console.log("Visitors data loaded from SQLite:", visitorsList);
 };
 
+/**
+ * Saves the current state of the SQLite database to the browser's local storage.
+ * This is crucial for data persistence between sessions.
+ */
 const saveDbToLocalStorage = () => {
     const binaryArray = db.export();
     const buffer = new Uint8Array(binaryArray);
-    const stringifiedBuffer = JSON.stringify(Array.from(buffer)); // Convert to JSON string
+    const stringifiedBuffer = JSON.stringify(Array.from(buffer));
     localStorage.setItem('sqliteDb', stringifiedBuffer);
 };
 
 // --- Utility Functions ---
 
+/**
+ * Checks if a visitor is currently banned based on their bannedUntil date.
+ * @param {Object} visitor - The visitor object.
+ * @returns {boolean} True if the visitor is banned, false otherwise.
+ */
 const isVisitorBanned = (visitor) => {
-    if (!visitor || !visitor.isBanned || !visitor.bannedUntil) return false;
-    return new Date(visitor.bannedUntil) > new Date();
+    return visitor && visitor.isBanned ===1;
 };
 
+/**
+ * Displays a temporary message box for user feedback.
+ * @param {string} message - The message to display.
+ * @param {string} type - The type of message ('success' or 'error') to determine styling.
+ */
 const showMessageBox = (message, type = 'success') => {
     const messageBox = document.getElementById('messageBox');
     if (messageBox) {
@@ -51,7 +73,7 @@ const showMessageBox = (message, type = 'success') => {
         }
         setTimeout(() => {
             messageBox.classList.add('hidden');
-        }, 3000); // Hide after 3 seconds
+        }, 3000);
     }
 };
 
@@ -68,23 +90,20 @@ const renderFoundProfile = (visitor) => {
             profileBox.classList.remove('hidden');
             document.getElementById('profileName').textContent = `${visitor.firstName} ${visitor.lastName}`;
             document.getElementById('profileFlat').textContent = (visitor.flatNumber && visitor.flatNumber.length > 0) ? `Flat: ${visitor.flatNumber}` : 'Flat: N/A';
+            document.getElementById('profilePhone').textContent = visitor.phoneNumber ? `Phone: ${visitor.phoneNumber}` : 'Phone: N/A';
             document.getElementById('profileDob').textContent = visitor.dateOfBirth ? `Date of Birth: ${visitor.dateOfBirth}` : 'Date of Birth: N/A';
             document.getElementById('profileNotes').textContent = visitor.notes || 'Notes: N/A';
             document.getElementById('profileImage').src = visitor.scannedIdPicUrl || 'https://placehold.co/400x250/000000/FFFFFF?text=No+ID';
-            
+
             const isBanned = isVisitorBanned(visitor);
 
             if (isBanned) {
-                const bannedUntilDate = new Date(visitor.bannedUntil);
-                const now = new Date();
-                const diffInMs = bannedUntilDate.getTime() - now.getTime();
-                const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
-                
-                statusSpan.textContent = `BANNED (for ${diffInDays} day${diffInDays > 1 ? 's' : ''})`;
-                statusSpan.className = 'text-lg font-bold text-red-500';
+                statusSpan.textContent = 'BANNED';
+                statusSpan.className = 'profile-status banned';
+
             } else {
                 statusSpan.textContent = 'CLEARED';
-                statusSpan.className = 'text-lg font-bold text-green-500';
+                statusSpan.className = 'profile-status cleared';
             }
 
             document.getElementById('profileBanButton').onclick = () => openModal(visitor.id);
@@ -128,14 +147,12 @@ const handleSearch = (e) => {
 const updateVisitorStatus = async (visitorId, newStatus) => {
     if (!visitorId) return;
     try {
-        // Prepare the SQL update statement
-        const isBanned = newStatus.isBanned ? 1 : 0; // SQLite does not have booleans
-        const bannedUntil = newStatus.bannedUntil;
+        const isBanned = newStatus.isBanned ? 1 : 0;
+        const bannedUntil = null;
         const notes = newStatus.notes || '';
 
-        db.run("UPDATE visitors SET isBanned = ?, notes = ?, bannedUntil = ? WHERE id = ?", [isBanned, notes, bannedUntil, visitorId]);
+        db.run("UPDATE visitors SET isBanned = ?, notes = ? WHERE id = ?", [isBanned, notes, visitorId]);
         
-        // Save the changes and re-render
         saveDbToLocalStorage();
         await loadVisitorsFromDb();
         renderFoundProfile(visitorsList.find(v => v.id === visitorId));
@@ -166,16 +183,17 @@ const updateGeneralNotes = async (visitorId, notes) => {
     }
 };
 
-const handleBan = (visitorId, notes, banPeriod) => {
-    if (!visitorId) return;
-    const bannedUntil = banPeriod > 0 ? new Date(Date.now() + banPeriod * 24 * 60 * 60 * 1000).toISOString() : null;
-    updateVisitorStatus(visitorId, { isBanned: true, notes, bannedUntil });
+const handleBan = () => {
+    if (!selectedVisitorId) return;
+        const notes = document.getElementById('modalNotes').value;
+            // Ban is now permanent
+        updateVisitorStatus(selectedVisitorId, { isBanned: true, notes });
     hideModal();
 };
 
 const handleUnban = (visitorId) => {
     if (!visitorId) return;
-    updateVisitorStatus(visitorId, { isBanned: false, notes: '', bannedUntil: null });
+    updateVisitorStatus(visitorId, { isBanned: false, notes: ''});
     hideModal();
 };
 
@@ -183,18 +201,10 @@ const openModal = (visitorId) => {
     selectedVisitorId = visitorId;
     const visitorData = visitorsList.find(v => v.id === visitorId);
     document.getElementById('modalNotes').value = visitorData?.notes || '';
-    let banPeriod = 0;
-    if (visitorData?.bannedUntil) {
-        const banDate = new Date(visitorData.bannedUntil);
-        const diffInDays = Math.ceil((banDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-        if (diffInDays > 0) banPeriod = diffInDays;
-    }
-    document.getElementById('modalBanPeriod').value = banPeriod;
     showModal();
 };
 
 // --- CSV Import Logic ---
-
 const parseCsv = (csvText) => {
     const lines = csvText.trim().split('\n');
     const headers = lines[0].split(',').map(header => header.trim());
@@ -209,43 +219,69 @@ const parseCsv = (csvText) => {
     return data;
 };
 
+// This is the CORRECTED function for handling CSV imports
 const handleImport = async (e) => {
     const file = e.target.files[0];
     if (!file) {
         return;
     }
-
     const reader = new FileReader();
     reader.onload = async (event) => {
         const csvData = event.target.result;
         const importedVisitors = parseCsv(csvData);
         let importedCount = 0;
-
         try {
+            console.log("Parsed CSV Data:", importedVisitors); // Log the parsed data for debugging
             db.run("BEGIN TRANSACTION;");
             for (const visitor of importedVisitors) {
-                // Generate a new unique ID for each imported visitor
-                const newId = uuidv4();
-                
-                // Default values for boolean and date fields
+                // Ensure required fields exist before attempting an insert/update
+                if (!visitor.firstName || !visitor.lastName) {
+                    console.error("Skipping a row due to missing firstName or lastName:", visitor);
+                    continue;
+                }
+
+                const visitorId = visitor.id || uuidv4();
                 const isBanned = visitor.isBanned === 'true' || visitor.isBanned === '1' ? 1 : 0;
-                const bannedUntil = visitor.bannedUntil || null;
                 
-                db.run(
-                    "INSERT INTO visitors (id, firstName, lastName, flatNumber, dateOfBirth, scannedIdPicUrl, isBanned, notes, generalNotes, bannedUntil) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
-                    [
-                        newId,
-                        visitor.firstName,
-                        visitor.lastName,
-                        visitor.flatNumber,
-                        visitor.dateOfBirth,
-                        visitor.scannedIdPicUrl,
-                        isBanned,
-                        visitor.notes,
-                        visitor.generalNotes,
-                        bannedUntil
-                    ]
-                );
+                // Check if the visitor already exists
+                const existingVisitor = db.exec("SELECT * FROM visitors WHERE id = ?", [visitorId]);
+                
+                if (existingVisitor.length > 0) {
+                    console.log(`Updating existing visitor with ID: ${visitorId}`);
+                    // If they exist, only UPDATE the CSV-related fields
+                    db.run(
+                        "UPDATE visitors SET firstName = ?, lastName = ?, flatNumber = ?, phoneNumber = ?, dateOfBirth = ?, scannedIdPicUrl = ?, isBanned = ?, notes = ? WHERE id = ?"
+                        [
+                            visitor.firstName,
+                            visitor.lastName,
+                            visitor.flatNumber,
+                            visitor.phoneNumber,
+                            visitor.dateOfBirth,
+                            visitor.scannedIdPicUrl,
+                            isBanned,
+                            visitor.notes,
+                            visitorId
+                        ]
+                    );
+                } else {
+                    console.log(`Inserting new visitor with ID: ${visitorId}`);
+                    // If they don't exist, INSERT a new record
+                    db.run(
+                        "INSERT INTO visitors (id, firstName, lastName, flatNumber, phoneNumber, dateOfBirth, scannedIdPicUrl, isBanned, notes, generalNotes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+                        [
+                            visitorId,
+                            visitor.firstName,
+                            visitor.lastName,
+                            visitor.flatNumber,
+                            visitor.phoneNumber,
+                            visitor.dateOfBirth,
+                            visitor.scannedIdPicUrl,
+                            isBanned,
+                            visitor.notes,
+                            '', // Use a blank string for new notes, as it won't be in the CS
+                        ]
+                    );
+                }
                 importedCount++;
             }
             db.run("COMMIT;");
@@ -263,91 +299,65 @@ const handleImport = async (e) => {
 };
 
 // --- Main Initialization Logic ---
-
 const initializeDb = async () => {
     try {
-        // Load the sql.js library
         const SQL = await initSqlJs({
             locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/${file}`
         });
 
-        // Check if a database exists in local storage
         const storedDb = localStorage.getItem('sqliteDb');
         if (storedDb) {
             const binaryArray = JSON.parse(storedDb);
             db = new SQL.Database(new Uint8Array(binaryArray));
             console.log("Database loaded from local storage.");
         } else {
-            // Create a new database if none exists
             db = new SQL.Database();
             console.log("New database created.");
         }
         
-        // Create the visitors table if it doesn't exist
         db.run(`
             CREATE TABLE IF NOT EXISTS visitors (
                 id TEXT PRIMARY KEY,
                 firstName TEXT,
                 lastName TEXT,
                 flatNumber TEXT,
+                phoneNumber TEXT,
                 dateOfBirth TEXT,
                 scannedIdPicUrl TEXT,
                 isBanned INTEGER,
                 notes TEXT,
-                generalNotes TEXT,
-                bannedUntil TEXT
+                generalNotes TEXT
             );
         `);
 
-        // Check if the table is empty and seed it if needed
-        const countRes = db.exec("SELECT COUNT(*) FROM visitors");
-        if (countRes[0].values[0][0] === 0) {
-            console.log("Seeding initial data...");
-            const initialData = [
-                { id: uuidv4(), firstName: "John", lastName: "Smith", flatNumber: "1A", dateOfBirth: "1990-05-15", scannedIdPicUrl: "https://placehold.co/400x250/000000/FFFFFF?text=Scanned+ID+Pic", isBanned: 0, notes: "", generalNotes: "Has been known to cause loud disturbances in the past.", bannedUntil: null },
-                { id: uuidv4(), firstName: "Jane", lastName: "Doe", flatNumber: "2B", dateOfBirth: "1992-08-20", scannedIdPicUrl: "https://placehold.co/400x250/000000/FFFFFF?text=Scanned+ID+Pic", isBanned: 0, notes: "", generalNotes: "A frequent visitor. Always polite.", bannedUntil: null },
-                { id: uuidv4(), firstName: "jackson", lastName: "boss", flatNumber: "3", dateOfBirth: "1992-08-20", scannedIdPicUrl: "https://placehold.co/400x250/000000/FFFFFF?text=Scanned+ID+Pic", isBanned: 0, notes: "", generalNotes: "A frequent visitor. Always polite.", bannedUntil: null }
-            ];
-            initialData.forEach(visitor => {
-                db.run("INSERT INTO visitors VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
-                    visitor.id,
-                    visitor.firstName,
-                    visitor.lastName,
-                    visitor.flatNumber,
-                    visitor.dateOfBirth,
-                    visitor.scannedIdPicUrl,
-                    visitor.isBanned,
-                    visitor.notes,
-                    visitor.generalNotes,
-                    visitor.bannedUntil
-                ]);
-            });
-            saveDbToLocalStorage();
-        }
+        // Fix for old database schemas - ensures all columns exist
+        try {
+            db.exec("ALTER TABLE visitors ADD COLUMN phoneNumber TEXT;");
+            console.log("Added 'phoneNumber' column to the visitors table.");
+        } catch (e) { /* Column already exists */ }
+        try {
+            db.exec("ALTER TABLE visitors ADD COLUMN generalNotes TEXT;");
+            console.log("Added 'generalNotes' column to the visitors table.");
+        } catch (e) { /* Column already exists */ }
 
-        // Initial data load
         await loadVisitorsFromDb();
 
-        // Attach event listeners
         document.getElementById('search').addEventListener('input', handleSearch);
         document.getElementById('modalCancelButton').addEventListener('click', hideModal);
         document.getElementById('modalConfirmBanButton').addEventListener('click', () => {
-            const notes = document.getElementById('modalNotes').value;
-            const banPeriod = parseInt(document.getElementById('modalBanPeriod').value, 10);
-            handleBan(selectedVisitorId, notes, banPeriod);
+            
+            handleBan();
         });
         document.getElementById('saveGeneralNotesButton').addEventListener('click', () => {
             const notes = document.getElementById('generalNotesInput').value;
             updateGeneralNotes(selectedVisitorId, notes);
         });
 
-        // Attach CSV import event listeners
         document.getElementById('importVisitorsButton').addEventListener('click', () => {
             document.getElementById('csvFile').click();
         });
         document.getElementById('csvFile').addEventListener('change', handleImport);
 
-        // Hide loading and show app
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('app').classList.remove('hidden');
 
@@ -356,5 +366,13 @@ const initializeDb = async () => {
         document.body.innerHTML = `<div class="flex items-center justify-center min-h-screen bg-red-900 text-white"><p class="text-xl">Failed to load app. Check console for errors.</p></div>`;
     }
 };
+
+// A simple utility function to generate a unique ID
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 window.onload = initializeDb;
