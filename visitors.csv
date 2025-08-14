@@ -1,0 +1,6 @@
+visitorId,firstName,lastName,flatNumber,phoneNumber,dateOfBirth,scannedIdPicUrl,isBanned,notes,generalNotes,bannedUntil
+12345,John,Doe,Apt 4B,555-123-4567,1990-01-01,pacto-visual-cWOzOnSoh6Q-unsplash.jpg,0,This is a note,general note here,2025-12-31
+12346,Jane,Smith,Apt 10C,555-987-6543,1985-05-15,http://example.com/jane_id.jpg,0,Visited on Monday,Regular visitor,
+12347,Peter,Jones,Apt 22A,555-555-5555,1992-11-20,http://example.com/peter_id.jpg,1,Banned for one week due to a conflict,Involved in an incident,2025-08-20
+12348,Sarah,Williams,Apt 7,555-111-2222,1978-02-28,http://example.com/sarah_id.jpg,0,Left a package for someone else,Package delivery,
+12349,Michael,Brown,Apt 5D,555-333-4444,2001-07-07,http://example.com/michael_id.jpg,0,No specific notes,First-time visitor,

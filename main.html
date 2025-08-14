@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visitor Management App (SQLite)</title>
+    <title>Visitor log Catherine booth house</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Custom CSS -->
@@ -22,8 +22,7 @@
     <!-- Main App Container -->
     <div id="app" class="hidden container mx-auto bg-white rounded-xl shadow-2xl p-6 md:p-10 border-t-8 border-blue-500">
         <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900">Catherine Booth House Visitor Log </h1>
-            <p class="text-gray-500 mt-2">Managed with an in-browser SQLite database.</p>
+            <h1 class="text-4xl font-bold text-gray-900">Catherine Booth House Visitors Log </h1>
         </div>
 
         <!-- Search and Add Section -->
@@ -41,7 +40,7 @@
         <div id="foundProfileBox" class="hidden bg-white p-6 rounded-lg shadow-lg border-l-4 border-blue-500 mb-8">
             <div class="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
                 <div class="flex-shrink-0">
-                    <img id="profileImage" src="https://placehold.co/150x150/000000/FFFFFF?text=No+ID" alt="Scanned ID" class="w-24 h-24 rounded-full object-cover border-4 border-gray-200">
+                    <img id="profileImage" src="https://placehold.co/150x150/000000/FFFFFF?text=No+ID" alt="Scanned ID" width="200" height="200">
                 </div>
                 <div class="flex-grow text-center md:text-left">
                     <div class="flex items-center justify-center md:justify-start space-x-2">
@@ -49,8 +48,9 @@
                         <span id="profileStatus" class="px-3 py-1 rounded-full text-white text-sm font-semibold">CLEARED</span>
                     </div>
                     <p id="profileFlat" class="text-gray-500 mt-1">Flat: N/A</p>
+                    <p id="profilePhone" class="text-gray-600">Phone number: </p>
                     <p id="profileDob" class="text-gray-500">Date of Birth: N/A</p>
-                    <p id="profileNotes" class="text-sm italic text-gray-400 mt-2">Notes: N/A</p>
+                    <p id="profileNotes" class="text-sm italic text-gray-900 font-bold mt-2">Notes: N/A</p>
                 </div>
                 <div class="flex space-x-2 flex-shrink-0">
                     <button id="profileBanButton" class="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors">Ban</button>
@@ -76,15 +76,11 @@
     <div id="banModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white p-8 rounded-lg shadow-2xl max-w-sm w-full mx-4">
             <h3 class="text-2xl font-bold mb-4 text-red-600">Ban Visitor</h3>
-            <p class="mb-4 text-gray-700">Please provide a reason and a ban duration in days.</p>
+            <p class="mb-4 text-gray-700">Please provide a reason.</p>
             <div class="space-y-4">
                 <div>
                     <label for="modalNotes" class="block text-sm font-medium text-gray-600">Reason for Ban</label>
                     <textarea id="modalNotes" rows="3" class="mt-1 w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
-                </div>
-                <div>
-                    <label for="modalBanPeriod" class="block text-sm font-medium text-gray-600">Ban Period (in days, 0 for permanent)</label>
-                    <input type="number" id="modalBanPeriod" value="30" min="0" class="mt-1 w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500">
                 </div>
             </div>
             <div class="flex justify-end space-x-2 mt-6">
