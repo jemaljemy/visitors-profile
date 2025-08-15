@@ -61,10 +61,14 @@ const isVisitorBanned = (visitor) => {
  * @param {string} type - The type of message ('success' or 'error') to determine styling.
  */
 const showMessageBox = (message, type = 'success') => {
+    const messageBoxWrapper = document.getElementById('messageBoxWrapper');
     const messageBox = document.getElementById('messageBox');
-    if (messageBox) {
+    
+
+    if (messageBoxWrapper && messageBox) {
         messageBox.textContent = message;
-        messageBox.classList.remove('hidden');
+        messageBoxWrapper.classList.remove('hidden');
+
         if (type === 'success') {
             messageBox.className = 'p-3 rounded-md text-center bg-green-500 text-white';
         } else if (type === 'error') {
@@ -204,13 +208,13 @@ const handleBanConfirm = () => {
 };
 
 // This is the function that gets called when the user confirms the unban action in the modal.
-const handleUnbanConfirm = () => {
+const handleUnbanConfirm = async  () => {
     const passwordInput = document.getElementById('unbanPasswordInput');
     const enteredPassword = passwordInput.value;
             
     if (enteredPassword === UNBAN_PASSWORD) {
         if (!selectedVisitorId) return;
-        updateVisitorStatus(selectedVisitorId, { isBanned: false, notes: ''});
+         await updateVisitorStatus(selectedVisitorId, { isBanned: false, notes: ''});
         hideUnbanModal();
         showMessageBox('Visitor has been unbanned.', 'success');
     } else {

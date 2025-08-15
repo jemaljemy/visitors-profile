@@ -95,3 +95,18 @@ button:hover {
 .profile-status.banned {
     background-color: #EF4444; /* Red */
 }
+
+/*
+ * This class positions the message box at the top of the page.
+ * The very high z-index ensures it appears above the modal.
+ */
+.message-box-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;  /* Ensures it's on top of EVERYTHING */
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+}
