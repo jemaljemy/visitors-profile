@@ -1,3 +1,18 @@
+
+# Visitor Management App
+
+A simple, client-side web application for managing and tracking visitor information using SQLite in the browser.
+
+### Features
+- Search visitor profiles
+- Ban/unban visitors with password protection
+- Import data from a CSV file
+- Persistent data storage via LocalStorage
+
+### Owner
+Jamal Laqdiem
+
+
 A Guide to Client-Side Application Development
 
 This document provides a comprehensive overview of the components, architecture, and best practices for building a self-contained, client-side web application. It is designed for developers who want to create a web application that runs entirely within the user's browser without requiring a separate backend server.
