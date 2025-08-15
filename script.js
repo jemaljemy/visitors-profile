@@ -1,9 +1,8 @@
-//****** */
-// ndhddjjdjd
 // --- Global State Variables ---
 let db = null;
 let visitorsList = [];
 let selectedVisitorId = null;
+const UNBAN_PASSWORD = "unban123";
 
 // --- Data Persistence Functions using sql.js ---
 
@@ -48,12 +47,12 @@ const saveDbToLocalStorage = () => {
 // --- Utility Functions ---
 
 /**
- * Checks if a visitor is currently banned based on their bannedUntil date.
+ * Checks if a visitor is currently banned.
  * @param {Object} visitor - The visitor object.
  * @returns {boolean} True if the visitor is banned, false otherwise.
  */
 const isVisitorBanned = (visitor) => {
-    return visitor && visitor.isBanned ===1;
+    return visitor && visitor.isBanned === 1;
 };
 
 /**
@@ -100,14 +99,15 @@ const renderFoundProfile = (visitor) => {
             if (isBanned) {
                 statusSpan.textContent = 'BANNED';
                 statusSpan.className = 'profile-status banned';
-
             } else {
                 statusSpan.textContent = 'CLEARED';
                 statusSpan.className = 'profile-status cleared';
             }
 
-            document.getElementById('profileBanButton').onclick = () => openModal(visitor.id);
-            document.getElementById('profileUnbanButton').onclick = () => handleUnban(visitor.id);
+            // Correctly hook up the button to open the modal
+            document.getElementById('profileBanButton').onclick = () => openBanModal(visitor.id);
+            // This is the updated line to open the unban modal
+            document.getElementById('profileUnbanButton').onclick = () => openUnbanModal(visitor.id);
 
             generalNotesBox.classList.remove('hidden');
             document.getElementById('generalNotesInput').value = visitor.generalNotes || '';
@@ -118,12 +118,26 @@ const renderFoundProfile = (visitor) => {
     }
 };
 
-const showModal = () => {
+const openBanModal = (visitorId) => {
+    selectedVisitorId = visitorId;
+    const visitorData = visitorsList.find(v => v.id === visitorId);
+    document.getElementById('modalNotes').value = visitorData?.notes || '';
     document.getElementById('banModal').classList.remove('hidden');
 };
 
-const hideModal = () => {
+const hideBanModal = () => {
     document.getElementById('banModal').classList.add('hidden');
+};
+
+// --- NEW FUNCTIONS FOR UNBAN MODAL ---
+const openUnbanModal = (visitorId) => {
+    selectedVisitorId = visitorId;
+    document.getElementById('unbanModal').classList.remove('hidden');
+    document.getElementById('unbanPasswordInput').value = ''; // Clear previous password
+};
+
+const hideUnbanModal = () => {
+    document.getElementById('unbanModal').classList.add('hidden');
 };
 
 // --- Event Handlers and SQLite Logic ---
@@ -148,7 +162,6 @@ const updateVisitorStatus = async (visitorId, newStatus) => {
     if (!visitorId) return;
     try {
         const isBanned = newStatus.isBanned ? 1 : 0;
-        const bannedUntil = null;
         const notes = newStatus.notes || '';
 
         db.run("UPDATE visitors SET isBanned = ?, notes = ? WHERE id = ?", [isBanned, notes, visitorId]);
@@ -183,25 +196,27 @@ const updateGeneralNotes = async (visitorId, notes) => {
     }
 };
 
-const handleBan = () => {
+const handleBanConfirm = () => {
     if (!selectedVisitorId) return;
-        const notes = document.getElementById('modalNotes').value;
-            // Ban is now permanent
-        updateVisitorStatus(selectedVisitorId, { isBanned: true, notes });
-    hideModal();
+    const notes = document.getElementById('modalNotes').value;
+    updateVisitorStatus(selectedVisitorId, { isBanned: true, notes });
+    hideBanModal();
 };
 
-const handleUnban = (visitorId) => {
-    if (!visitorId) return;
-    updateVisitorStatus(visitorId, { isBanned: false, notes: ''});
-    hideModal();
-};
-
-const openModal = (visitorId) => {
-    selectedVisitorId = visitorId;
-    const visitorData = visitorsList.find(v => v.id === visitorId);
-    document.getElementById('modalNotes').value = visitorData?.notes || '';
-    showModal();
+// This is the function that gets called when the user confirms the unban action in the modal.
+const handleUnbanConfirm = () => {
+    const passwordInput = document.getElementById('unbanPasswordInput');
+    const enteredPassword = passwordInput.value;
+            
+    if (enteredPassword === UNBAN_PASSWORD) {
+        if (!selectedVisitorId) return;
+        updateVisitorStatus(selectedVisitorId, { isBanned: false, notes: ''});
+        hideUnbanModal();
+        showMessageBox('Visitor has been unbanned.', 'success');
+    } else {
+        showMessageBox('Incorrect password.', 'error');
+        passwordInput.value = ''; // Clear password field
+    }
 };
 
 // --- CSV Import Logic ---
@@ -219,7 +234,6 @@ const parseCsv = (csvText) => {
     return data;
 };
 
-// This is the CORRECTED function for handling CSV imports
 const handleImport = async (e) => {
     const file = e.target.files[0];
     if (!file) {
@@ -240,6 +254,7 @@ const handleImport = async (e) => {
                     continue;
                 }
 
+                // Check for id in the CSV or generate a new one
                 const visitorId = visitor.id || uuidv4();
                 const isBanned = visitor.isBanned === 'true' || visitor.isBanned === '1' ? 1 : 0;
                 
@@ -248,9 +263,8 @@ const handleImport = async (e) => {
                 
                 if (existingVisitor.length > 0) {
                     console.log(`Updating existing visitor with ID: ${visitorId}`);
-                    // If they exist, only UPDATE the CSV-related fields
                     db.run(
-                        "UPDATE visitors SET firstName = ?, lastName = ?, flatNumber = ?, phoneNumber = ?, dateOfBirth = ?, scannedIdPicUrl = ?, isBanned = ?, notes = ? WHERE id = ?"
+                        "UPDATE visitors SET firstName = ?, lastName = ?, flatNumber = ?, phoneNumber = ?, dateOfBirth = ?, scannedIdPicUrl = ?, isBanned = ?, notes = ? WHERE id = ?",
                         [
                             visitor.firstName,
                             visitor.lastName,
@@ -265,7 +279,6 @@ const handleImport = async (e) => {
                     );
                 } else {
                     console.log(`Inserting new visitor with ID: ${visitorId}`);
-                    // If they don't exist, INSERT a new record
                     db.run(
                         "INSERT INTO visitors (id, firstName, lastName, flatNumber, phoneNumber, dateOfBirth, scannedIdPicUrl, isBanned, notes, generalNotes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
                         [
@@ -278,7 +291,7 @@ const handleImport = async (e) => {
                             visitor.scannedIdPicUrl,
                             isBanned,
                             visitor.notes,
-                            '', // Use a blank string for new notes, as it won't be in the CS
+                            '', // Use a blank string for new notes, as it won't be in the CSV
                         ]
                     );
                 }
@@ -342,12 +355,17 @@ const initializeDb = async () => {
 
         await loadVisitorsFromDb();
 
+        // --- Event Listeners ---
         document.getElementById('search').addEventListener('input', handleSearch);
-        document.getElementById('modalCancelButton').addEventListener('click', hideModal);
-        document.getElementById('modalConfirmBanButton').addEventListener('click', () => {
-            
-            handleBan();
-        });
+        
+        // Ban Modal Listeners
+        document.getElementById('modalCancelButton').addEventListener('click', hideBanModal);
+        document.getElementById('modalConfirmBanButton').addEventListener('click', handleBanConfirm);
+        
+        // Unban Modal Listeners (NEW)
+        document.getElementById('unbanCancelButton').addEventListener('click', hideUnbanModal);
+        document.getElementById('unbanConfirmButton').addEventListener('click', handleUnbanConfirm);
+
         document.getElementById('saveGeneralNotesButton').addEventListener('click', () => {
             const notes = document.getElementById('generalNotesInput').value;
             updateGeneralNotes(selectedVisitorId, notes);
@@ -369,10 +387,10 @@ const initializeDb = async () => {
 
 // A simple utility function to generate a unique ID
 function uuidv4() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
 }
 
 window.onload = initializeDb;
